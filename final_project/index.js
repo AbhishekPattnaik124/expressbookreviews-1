@@ -1,16 +1,34 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const session = require('express-session')
+const session = require('express-session');
+const { general } = require('./router/general.js');
 const customer_routes = require('./router/auth_users.js').authenticated;
 const genl_routes = require('./router/general.js').general;
 
 const app = express();
+const PORT = 5000;
 
 app.use(express.json());
 
-app.use("/customer",session({secret:"secretKey",resave: true, saveUninitialized: true}))
+// Use the general routes for books
+app.use('/books', general);
 
-app.use("/customer/auth/*", function auth(req,res,next){
+// Use the customer authentication routes
+app.use("/customer/auth", customer_routes);
+
+// General routes for various endpoints
+app.use("/promise/books", general);
+app.use('/async/books', general);
+app.use('/async/isbn', general);
+app.use('/promise/isbn', general);
+app.use('/async/author', general);
+app.use('/async/title', general);
+
+// Session handling middleware for customer routes
+app.use("/customer", session({ secret: "secretKey", resave: true, saveUninitialized: true }));
+
+// Authentication middleware for customer routes
+app.use("/customer/auth/*", function auth(req, res, next) {
   // Check if the user has an access token in the session
   if (!req.session.accessToken) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -24,16 +42,17 @@ app.use("/customer/auth/*", function auth(req,res,next){
     req.userPassword = userPassword;
     next();
   } catch (err) {
-    return res.status(401).json(err);
-
-    //return res.status(401).json({accessToken:req.session.accessToken, message: "Invalid access token" });
+    return res.status(401).json({ message: "Invalid access token", error: err });
   }
-
 });
- 
-const PORT =5000;
 
+// Use the customer routes
 app.use("/customer", customer_routes);
+
+// Use the general routes for all other endpoints
 app.use("/", genl_routes);
 
-app.listen(PORT,()=>console.log("Server is running"));
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});

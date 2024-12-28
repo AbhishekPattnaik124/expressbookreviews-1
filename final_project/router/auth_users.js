@@ -109,25 +109,33 @@ regd_users.put('/auth/review/:isbn', function(req, res) {
 
 
 regd_users.delete("/auth/review/:isbn", (req, res) => {
-  const username = req.session.username;
-  const isbn = req.params.isbn;
-  
-  let booksList = Object.values(books)
-  const book = booksList.find(b => b.isbn == isbn)
-  
-  if (!book) {
-    res.status(404).send(`The book with ISBN  ${isbn}  does not exist.`);
-    return;
+  const isbn = req.params.isbn; // Get ISBN from the URL parameter.
+  const username = req.session.username; // Get the username from the current session (logged-in user).
+
+  if (!username) { // Check if the user is logged in.
+    return res.status(401).json({ message: "Unauthorized. Please log in." });
   }
-  
-  if (!book.reviews[username]) {
-    res.status(404).send(`You have not posted any review for the book with ISBN  ${isbn}: ==>${JSON.stringify(book)}`);
-    return;
+
+  // Find the book by its ISBN.
+  const book = books[isbn];
+  if (!book) { // If the book doesn't exist.
+    return res.status(404).json({ message: "Book not found." });
   }
-  
-  delete book.reviews[username];
-  res.send(`Your review has been deleted for the book with ${isbn} isbn: ==>${JSON.stringify(book)}`);
+
+  // Check if the logged-in user has written a review for the book.
+  if (book.reviews && book.reviews[username]) {
+    delete book.reviews[username]; // Delete the review written by this user.
+    return res.status(200).json({
+      message: `Review by ${username} for book with ISBN ${isbn} deleted successfully.`,
+      reviews: book.reviews, // Return the updated list of reviews.
+    });
+  } else { // If the user hasn't written a review for this book.
+    return res.status(404).json({
+      message: `No review found for user ${username} on book with ISBN ${isbn}.`,
+    });
+  }
 });
+
 
 
 module.exports.authenticated = regd_users;
